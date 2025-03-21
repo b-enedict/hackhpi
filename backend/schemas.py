@@ -6,6 +6,7 @@ class DetectionEventBase(BaseModel):
     detection_type: str
     latitude: float
     longitude: float
+    label: str
 
 class DetectionEventCreate(DetectionEventBase):
     pass

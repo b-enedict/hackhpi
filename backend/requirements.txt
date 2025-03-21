@@ -4,4 +4,5 @@ sqlalchemy
 pydantic
 pydantic-settings
 python-dotenv
-tabulate 
+tabulate
+requests 

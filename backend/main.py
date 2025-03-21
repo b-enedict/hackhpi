@@ -79,10 +79,9 @@ async def process_with_ml_model(sensor_data: List[SensorDataPoint], db: Session)
         # Simulating a detection - in your real implementation, this would be model output
         # Returns a dict with detected event time interval and label
         return {
-            "label": "pothole",  # The type of event detected
-            "start_time": acceleration_data[5][3],  # Start timestamp
-            "end_time": acceleration_data[15][3],   # End timestamp
-            "confidence": 0.89                      # Confidence score
+            "label": "stairs",  # The type of event detected
+            "intervall_start_time": acceleration_data[5][3],  # Start timestamp
+            "intervall_end_time": acceleration_data[15][3],   # End timestamp
         }
     
     # Extract acceleration data from sensor data
@@ -96,46 +95,46 @@ async def process_with_ml_model(sensor_data: List[SensorDataPoint], db: Session)
     # Process with ML model - in reality this would be your model prediction
     detection_result = run_ml_model(acceleration_data)
     
-    # If event detected
-    if detection_result["confidence"] > 0.7:  # Threshold for detection confidence
-        # Extract detection time interval
-        start_time = detection_result["start_time"]
-        end_time = detection_result["end_time"]
-        label = detection_result["label"]
+
+    # Extract detection time interval
+    intervall_start_time = detection_result["intervall_start_time"]
+    intervall_end_time = detection_result["intervall_end_time"]
+    label = detection_result["label"]
+    
+    # Find GPS coordinates within the detection time interval
+    locations_in_interval = [
+        point.location for point in sensor_data 
+        if intervall_start_time <= point.timestamp <= intervall_end_time
+    ]
+    
+    if locations_in_interval:
+        # Calculate the middle GPS position
+        avg_latitude = mean([loc.latitude for loc in locations_in_interval])
+        avg_longitude = mean([loc.longitude for loc in locations_in_interval])
         
-        # Find GPS coordinates within the detection time interval
-        locations_in_interval = [
-            point.location for point in sensor_data 
-            if start_time <= point.timestamp <= end_time
-        ]
+        # Create a detection event
+        detection_data = DetectionEventCreate(
+            detection_type=label,
+            latitude=avg_latitude,
+            longitude=avg_longitude,
+            label=label
+        )
         
-        if locations_in_interval:
-            # Calculate the middle GPS position
-            avg_latitude = mean([loc.latitude for loc in locations_in_interval])
-            avg_longitude = mean([loc.longitude for loc in locations_in_interval])
-            
-            # Create a detection event
-            detection_data = DetectionEventCreate(
-                detection_type=label,
-                latitude=avg_latitude,
-                longitude=avg_longitude
-            )
-            
-            # Store in database using the existing POST endpoint
-            # In local mode, we can directly create it in the database
-            db_detection = DetectionEvent(
-                detection_type=detection_data.detection_type,
-                latitude=detection_data.latitude,
-                longitude=detection_data.longitude
-            )
-            db.add(db_detection)
-            db.commit()
-            
-            print(f"Detection stored: {label} at ({avg_latitude}, {avg_longitude})")
-        else:
-            print("No GPS coordinates found within the detection interval")
+        # Store in database using the existing POST endpoint
+        # In local mode, we can directly create it in the database
+        db_detection = DetectionEvent(
+            detection_type=detection_data.detection_type,
+            latitude=detection_data.latitude,
+            longitude=detection_data.longitude,
+            label=detection_data.label
+        )
+        db.add(db_detection)
+        db.commit()
+        
+        print(f"Detection stored: {label} at ({avg_latitude}, {avg_longitude})")
     else:
-        print("No significant event detected by the ML model")
+        print("No GPS coordinates found within the detection interval")
+
 
 @app.post("/process-sensor-data/")
 async def process_sensor_data(
