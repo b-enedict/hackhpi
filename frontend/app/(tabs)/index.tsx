@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Navigation2, Search } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Alert,
   Platform,
@@ -9,10 +9,33 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
+import { startRecording, stopRecording } from '../../utils/recordingService';
+
+interface StairsFeature {
+  geometry: {
+    coordinates: [number, number];
+    type: string;
+  };
+  properties: {
+    type: string;
+    description: string;
+  };
+}
+
+interface StairsData {
+  features: StairsFeature[];
+}
+
+interface MapComponentProps {
+  location: Location.LocationObject;
+  stairsData: StairsData;
+  route: any; // Update this type based on your route data structure
+}
 
 // Mock stairs data - in production this would come from your backend
-const stairsData = {
+const stairsData: StairsData = {
   features: [
     {
       geometry: {
@@ -28,7 +51,7 @@ const stairsData = {
 };
 
 // Web-compatible map component
-function MapComponent({ location, stairsData, route }) {
+function MapComponent({ location, stairsData, route }: MapComponentProps) {
   if (Platform.OS === 'web') {
     return (
       <iframe
@@ -68,8 +91,15 @@ function MapComponent({ location, stairsData, route }) {
           longitude: location.coords.longitude,
         }}
         title="You are here"
-      />
-      {stairsData.features.map((feature, index) => (
+      >
+        <View style={styles.markerContainer}>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            style={styles.markerImage}
+          />
+        </View>
+      </Marker>
+      {stairsData.features.map((feature: StairsFeature, index: number) => (
         <Marker
           key={index}
           coordinate={{
@@ -88,10 +118,12 @@ function MapComponent({ location, stairsData, route }) {
 }
 
 export default function MapScreen() {
-  const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [destination, setDestination] = useState(null);
-  const [route, setRoute] = useState(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [destination, setDestination] = useState<any | null>(null);
+  const [route, setRoute] = useState<any[] | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recordingRef = useRef<{ cleanup: () => void; getData: () => any[] } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -106,7 +138,31 @@ export default function MapScreen() {
     })();
   }, []);
 
-  const checkForStairs = (route) => {
+  const handleRecordingPress = async () => {
+    try {
+      if (!isRecording) {
+        // Start recording
+        const recording = await startRecording();
+        recordingRef.current = recording;
+        setIsRecording(true);
+      } else {
+        // Stop recording
+        if (recordingRef.current) {
+          const recordedData = await stopRecording(recordingRef.current.cleanup);
+          console.log('Recorded data:', recordedData);
+          // Here you can send the data to your backend or store it locally
+          recordingRef.current = null;
+        }
+        setIsRecording(false);
+      }
+    } catch (error) {
+      console.error('Recording error:', error);
+      Alert.alert('Recording Error', 'Failed to start/stop recording');
+      setIsRecording(false);
+    }
+  };
+
+  const checkForStairs = (currentRoute: any) => {
     Alert.alert(
       'Stairs Detected',
       'This route contains stairs. Would you like to find an alternative route?',
@@ -167,6 +223,18 @@ export default function MapScreen() {
           <Text style={styles.navigationButtonText}>Start Navigation</Text>
         </TouchableOpacity>
       )}
+
+      <TouchableOpacity
+        style={[
+          styles.floatingButton,
+          isRecording && styles.recordingButton
+        ]}
+        onPress={handleRecordingPress}
+      >
+        <Text style={styles.floatingButtonText}>
+          {isRecording ? 'Stop Recording' : 'Start Recording'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -238,5 +306,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    backgroundColor: '#FF3B30',
+    borderRadius: 25,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  recordingButton: {
+    backgroundColor: '#34C759',
+  },
+  floatingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  markerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerImage: {
+    width: 40,
+    height: 40,
   },
 });

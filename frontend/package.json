@@ -40,7 +40,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.19.13",
     "react-native-web-maps": "^0.3.0",
-    "react-native-webview": "13.12.5"
+    "react-native-webview": "13.12.5",
+    "expo-sensors": "~14.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
