@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel   
 from datetime import datetime
 from typing import Optional, List
 
@@ -35,5 +35,5 @@ class SensorDataPoint(BaseModel):
     location: Location
     timestamp: int
 
-class SensorData(BaseModel):
-    __root__: List[SensorDataPoint] 
+class SensorData(RootModel):
+    root: List[SensorDataPoint] 

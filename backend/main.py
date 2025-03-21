@@ -52,6 +52,7 @@ async def debug_database(db: Session = Depends(get_db)):
         result.append({
             "id": detection.id,
             "detection_type": detection.detection_type,
+            "label": detection.label,
             "latitude": detection.latitude,
             "longitude": detection.longitude,
             "timestamp": str(detection.timestamp)
@@ -165,7 +166,8 @@ async def create_detection(
     db_detection = DetectionEvent(
         detection_type=detection.detection_type,
         latitude=detection.latitude,
-        longitude=detection.longitude
+        longitude=detection.longitude,
+        label=detection.label if hasattr(detection, 'label') else None
     )
     
     # Add to database

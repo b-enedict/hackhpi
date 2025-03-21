@@ -8,4 +8,5 @@ class DetectionEvent(Base):
     detection_type = Column(String, nullable=False)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+    label = Column(String, nullable=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False) 
