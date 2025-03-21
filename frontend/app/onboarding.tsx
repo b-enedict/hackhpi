@@ -1,60 +1,57 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect } from 'react';
 
-const ONBOARDING_KEY = 'hasSeenOnboarding';
-
-export default function OnboardingScreen() {
-  useEffect(() => {
-    checkOnboardingStatus();
-  }, []);
-
-  const checkOnboardingStatus = async () => {
-    try {
-      const hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
-      if (hasSeenOnboarding === 'true') {
-        router.replace('/(tabs)');
-      }
-    } catch (error) {
-      console.error('Error checking onboarding status:', error);
-    }
-  };
-
-  const handleGetStarted = async () => {
-    try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error saving onboarding status:', error);
-    }
+export default function Page() {
+  const handleGetStarted = () => {
+    router.replace('/(tabs)');
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome to StairGuard</Text>
-        
-        <View style={styles.featuresContainer}>
-          <View style={styles.featureItem}>
-            <Text style={styles.featureTitle}>🗺️ Interactive Map</Text>
-            <Text style={styles.featureText}>View and navigate with detected stairs and obstacles</Text>
-          </View>
-
-          <View style={styles.featureItem}>
-            <Text style={styles.featureTitle}>📍 Real-time Detection</Text>
-            <Text style={styles.featureText}>Automatically detect and mark stairs while you walk</Text>
-          </View>
-
-          <View style={styles.featureItem}>
-            <Text style={styles.featureTitle}>🎯 Location Tracking</Text>
-            <Text style={styles.featureText}>See your current location and nearby detections</Text>
-          </View>
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome to{'\n'}StairGuard</Text>
+          <Text style={styles.subtitle}>
+            Helping you navigate stairs safely
+          </Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
+        <View style={styles.features}>
+          <Feature
+            emoji="🗺️"
+            title="Interactive Map"
+            description="View and track stairs in your area"
+          />
+          <Feature
+            emoji="📍"
+            title="Real-time Detection"
+            description="Automatic stair detection while you walk"
+          />
+          <Feature
+            emoji="🎯"
+            title="Location Tracking"
+            description="See your position and nearby stairs"
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={handleGetStarted}
+        >
           <Text style={styles.buttonText}>Get Started</Text>
         </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function Feature({ emoji, title, description }: { emoji: string; title: string; description: string }) {
+  return (
+    <View style={styles.feature}>
+      <Text style={styles.featureEmoji}>{emoji}</Text>
+      <View style={styles.featureText}>
+        <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureDescription}>{description}</Text>
       </View>
     </View>
   );
@@ -67,47 +64,63 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    padding: 24,
+    justifyContent: 'space-between',
+  },
+  header: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    marginTop: 40,
   },
   title: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: 'bold',
-    marginBottom: 40,
+    textAlign: 'center',
     color: '#007AFF',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
     textAlign: 'center',
   },
-  featuresContainer: {
-    width: '100%',
-    marginBottom: 40,
+  features: {
+    marginVertical: 48,
   },
-  featureItem: {
-    marginBottom: 30,
-    padding: 20,
+  feature: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F5F5F5',
-    borderRadius: 15,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  featureTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
+  featureEmoji: {
+    fontSize: 32,
+    marginRight: 16,
   },
   featureText: {
-    fontSize: 16,
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+    color: '#333',
+  },
+  featureDescription: {
+    fontSize: 14,
     color: '#666',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   button: {
     backgroundColor: '#007AFF',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 25,
-    marginTop: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 32,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
