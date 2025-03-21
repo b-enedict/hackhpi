@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { Accelerometer } from 'expo-sensors';
+import { API_URL } from '../config/env';
 
 interface SensorData {
   timestamp: number;
@@ -25,27 +26,21 @@ const sensorData: SensorData[] = [];
 const LOCATION_UPDATE_INTERVAL = 1000; // 1 second
 const ACCELERATION_UPDATE_INTERVAL = 100; // 100ms (10 times per second)
 
-const API_URL = 'http://localhost:8000'; // Update this with your backend URL
-
-export const processSensorData = async (data: SensorData[]) => {
+export const processSensorData = async (data: any) => {
   try {
-    const response = await fetch(`${API_URL}/process-sensor-data`, {
+    const response = await fetch(`${API_URL}/detection`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        recordingDate: new Date().toISOString(),
-        sensorData: data,
-      }),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error('Failed to process sensor data');
     }
 
-    const result = await response.json();
-    return result;
+    return await response.json();
   } catch (error) {
     console.error('Error processing sensor data:', error);
     throw error;

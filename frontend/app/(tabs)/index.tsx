@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { startRecording, stopRecording } from '../../utils/recordingService';
+import { API_URL } from '../../config/env';
 
 interface DetectionEvent {
   id: number;
@@ -42,7 +43,6 @@ interface MapComponentProps {
   route: any; // Update this type based on your route data structure
 }
 
-const API_URL = 'http://localhost:8000';
 const POLLING_INTERVAL = 2000; // 2 seconds
 
 // Web-compatible map component
@@ -110,34 +110,20 @@ export default function MapScreen() {
   const recordingRef = useRef<{ cleanup: () => void; getData: () => any[] } | null>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  console.log(API_URL);
+  
+
   // Function to fetch detection events
   const fetchDetectionEvents = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/detections/`);
+      const response = await fetch(`${API_URL}/detection`);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('Failed to fetch detection events');
       }
-      
-      const detectionEvents: DetectionEvent[] = await response.json();
-      
-      // Convert detection events to stairs features
-      const features: StairsFeature[] = detectionEvents.map(event => ({
-        geometry: {
-          coordinates: [event.longitude, event.latitude],
-          type: 'Point',
-        },
-        properties: {
-          type: event.detection_type,
-          description: `${event.detection_type} detected at ${new Date(event.timestamp).toLocaleString()}`,
-        },
-      }));
-
-      setStairsData({ features });
+      const data = await response.json();
+      setStairsData({ features: data });
     } catch (error) {
       console.error('Error fetching detection events:', error);
-      // Don't set error message that would block the map from loading
-      // Just keep the existing stairs data or set empty features
-      setStairsData(prevData => prevData || { features: [] });
     }
   }, []);
 
