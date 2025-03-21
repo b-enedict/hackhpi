@@ -25,6 +25,33 @@ const sensorData: SensorData[] = [];
 const LOCATION_UPDATE_INTERVAL = 1000; // 1 second
 const ACCELERATION_UPDATE_INTERVAL = 100; // 100ms (10 times per second)
 
+const API_URL = 'http://localhost:8000'; // Update this with your backend URL
+
+export const processSensorData = async (data: SensorData[]) => {
+  try {
+    const response = await fetch(`${API_URL}/process-sensor-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        recordingDate: new Date().toISOString(),
+        sensorData: data,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error processing sensor data:', error);
+    throw error;
+  }
+};
+
 export const startRecording = async () => {
   try {
     // Request permissions
@@ -102,7 +129,15 @@ export const stopRecording = async (cleanup: () => void) => {
   // Clear the stored data
   sensorData.length = 0;
   
-  return recordedData;
+  try {
+    // Process the recorded data
+    const result = await processSensorData(recordedData);
+    console.log('Sensor data processed:', result);
+    return recordedData;
+  } catch (error) {
+    console.error('Error processing sensor data:', error);
+    throw error;
+  }
 };
 
 export const exportRecordingData = (data: SensorData[]) => {
