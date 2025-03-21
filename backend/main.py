@@ -1,27 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from pydantic_settings import BaseSettings
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
+from database import SessionLocal, Base, engine
+from sqlalchemy.orm import Session
 from typing import List
 
 from models import DetectionEvent
 from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema
-
-class Settings(BaseSettings):
-    DATABASE_URL: str
-
-    class Config:
-        env_file = ".env"
-
-settings = Settings()
-
-# Create SQLAlchemy engine
-engine = create_engine(settings.DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -47,16 +30,13 @@ async def health_check():
 @app.post("/detections/", response_model=DetectionEventSchema)
 async def create_detection(
     detection: DetectionEventCreate,
-    db: SessionLocal = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
-    # Create a Point geometry from latitude and longitude
-    point = Point(detection.longitude, detection.latitude)
-    geometry = from_shape(point, srid=4326)
-    
-    # Create database model
+    # Create database model with direct lat/lng values
     db_detection = DetectionEvent(
         detection_type=detection.detection_type,
-        location=geometry
+        latitude=detection.latitude,
+        longitude=detection.longitude
     )
     
     # Add to database
@@ -70,7 +50,7 @@ async def create_detection(
 async def get_detections(
     skip: int = 0,
     limit: int = 100,
-    db: SessionLocal = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     detections = db.query(DetectionEvent).offset(skip).limit(limit).all()
     return detections 
