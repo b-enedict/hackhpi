@@ -129,15 +129,7 @@ export const stopRecording = async (cleanup: () => void) => {
   // Clear the stored data
   sensorData.length = 0;
   
-  try {
-    // Process the recorded data
-    const result = await processSensorData(recordedData);
-    console.log('Sensor data processed:', result);
-    return recordedData;
-  } catch (error) {
-    console.error('Error processing sensor data:', error);
-    throw error;
-  }
+  return recordedData;
 };
 
 export const exportRecordingData = (data: SensorData[]) => {

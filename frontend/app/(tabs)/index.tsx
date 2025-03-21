@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Navigation2, Search } from 'lucide-react-native';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Alert,
   Platform,
@@ -12,6 +12,14 @@ import {
   Image,
 } from 'react-native';
 import { startRecording, stopRecording } from '../../utils/recordingService';
+
+interface DetectionEvent {
+  id: number;
+  detection_type: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+}
 
 interface StairsFeature {
   geometry: {
@@ -34,21 +42,8 @@ interface MapComponentProps {
   route: any; // Update this type based on your route data structure
 }
 
-// Mock stairs data - in production this would come from your backend
-const stairsData: StairsData = {
-  features: [
-    {
-      geometry: {
-        coordinates: [52.520008, 13.404954],
-        type: 'Point',
-      },
-      properties: {
-        type: 'stairs',
-        description: 'Main entrance stairs',
-      },
-    },
-  ],
-};
+const API_URL = 'http://localhost:8000';
+const POLLING_INTERVAL = 2000; // 2 seconds
 
 // Web-compatible map component
 function MapComponent({ location, stairsData, route }: MapComponentProps) {
@@ -84,30 +79,18 @@ function MapComponent({ location, stairsData, route }: MapComponentProps) {
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       }}
+      showsUserLocation={true}
+      showsMyLocationButton={true}
     >
-      <Marker
-        coordinate={{
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        }}
-        title="You are here"
-      >
-        <View style={styles.markerContainer}>
-          <Image
-            source={require('../../assets/images/icon.png')}
-            style={styles.markerImage}
-          />
-        </View>
-      </Marker>
-      {stairsData.features.map((feature: StairsFeature, index: number) => (
+      {stairsData.features.map((feature, index) => (
         <Marker
           key={index}
           coordinate={{
             latitude: feature.geometry.coordinates[1],
             longitude: feature.geometry.coordinates[0],
           }}
-          title={feature.properties.description}
-          pinColor="red"
+          title={feature.properties.type}
+          description={feature.properties.description}
         />
       ))}
       {route && (
@@ -123,24 +106,100 @@ export default function MapScreen() {
   const [destination, setDestination] = useState<any | null>(null);
   const [route, setRoute] = useState<any[] | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [stairsData, setStairsData] = useState<StairsData>({ features: [] });
   const recordingRef = useRef<{ cleanup: () => void; getData: () => any[] } | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Function to fetch detection events
+  const fetchDetectionEvents = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/detections/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const detectionEvents: DetectionEvent[] = await response.json();
+      
+      // Convert detection events to stairs features
+      const features: StairsFeature[] = detectionEvents.map(event => ({
+        geometry: {
+          coordinates: [event.longitude, event.latitude],
+          type: 'Point',
+        },
+        properties: {
+          type: event.detection_type,
+          description: `${event.detection_type} detected at ${new Date(event.timestamp).toLocaleString()}`,
+        },
+      }));
+
+      setStairsData({ features });
+    } catch (error) {
+      console.error('Error fetching detection events:', error);
+      // Don't set error message that would block the map from loading
+      // Just keep the existing stairs data or set empty features
+      setStairsData(prevData => prevData || { features: [] });
+    }
+  }, []);
+
+  // Initial location setup
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
+          return;
+        }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
+        let location = await Location.getCurrentPositionAsync({});
+        setLocation(location);
+      } catch (error) {
+        console.error('Error getting location:', error);
+        // Set a default location if we can't get the user's location
+        setLocation({
+          coords: {
+            latitude: 52.520008, // Default to Berlin
+            longitude: 13.404954,
+            altitude: 0,
+            accuracy: 0,
+            altitudeAccuracy: 0,
+            heading: 0,
+            speed: 0,
+          },
+          timestamp: Date.now(),
+        });
+      }
     })();
   }, []);
+
+  // Setup polling for detection events
+  useEffect(() => {
+    // Initial fetch
+    fetchDetectionEvents();
+
+    // Start polling if not recording
+    if (!isRecording) {
+      pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
+    }
+
+    // Cleanup function
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [isRecording, fetchDetectionEvents]);
 
   const handleRecordingPress = async () => {
     try {
       if (!isRecording) {
+        // Stop polling when starting recording
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        
         // Start recording
         const recording = await startRecording();
         recordingRef.current = recording;
@@ -149,9 +208,11 @@ export default function MapScreen() {
         // Stop recording
         if (recordingRef.current) {
           const recordedData = await stopRecording(recordingRef.current.cleanup);
-          console.log('Recorded data:', recordedData);
-          // Here you can send the data to your backend or store it locally
           recordingRef.current = null;
+          
+          // Fetch latest data and restart polling
+          await fetchDetectionEvents().catch(console.error); // Don't let fetch errors block the UI
+          pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
         }
         setIsRecording(false);
       }
@@ -159,6 +220,11 @@ export default function MapScreen() {
       console.error('Recording error:', error);
       Alert.alert('Recording Error', 'Failed to start/stop recording');
       setIsRecording(false);
+      
+      // Restart polling if recording fails
+      if (!pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
+      }
     }
   };
 
@@ -186,7 +252,8 @@ export default function MapScreen() {
     );
   };
 
-  if (errorMsg) {
+  // Only show error message for location permission denial
+  if (errorMsg === 'Permission to access location was denied') {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>{errorMsg}</Text>
