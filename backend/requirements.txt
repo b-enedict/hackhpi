@@ -3,4 +3,5 @@ uvicorn
 sqlalchemy
 pydantic
 pydantic-settings
-python-dotenv 
+python-dotenv
+tabulate 

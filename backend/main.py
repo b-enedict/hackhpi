@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException
 from database import SessionLocal, Base, engine
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
+import json
 
 from models import DetectionEvent
 from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema
@@ -19,9 +20,40 @@ def get_db():
     finally:
         db.close()
 
+def add_detection_record(
+        db: Session, 
+        detection_type: str,
+        latitude: float,
+        longitude: float
+    ) -> DetectionEvent:
+    db_detection = DetectionEvent(
+        detection_type=detection_type,
+        latitude=latitude,
+        longitude=longitude
+    )
+    db.add(db_detection)
+    db.commit()
+    db.refresh(db_detection)
+    return db_detection
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Geospatial API"}
+
+@app.get("/debug/database", response_model=List[Dict[str, Any]])
+async def debug_database(db: Session = Depends(get_db)):
+    """Print all database contents for debugging purposes"""
+    detections = db.query(DetectionEvent).all()
+    result = []
+    for detection in detections:
+        result.append({
+            "id": detection.id,
+            "detection_type": detection.detection_type,
+            "latitude": detection.latitude,
+            "longitude": detection.longitude,
+            "timestamp": str(detection.timestamp)
+        })
+    return result
 
 @app.get("/health")
 async def health_check():
