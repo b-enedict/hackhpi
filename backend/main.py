@@ -12,6 +12,11 @@ from inference import acceleration_data
 from models import DetectionEvent
 from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema, SensorDataPoint
 
+from pydantic import BaseModel
+import boto3
+
+from models import DetectionEvent
+from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema
 # Create tables
 Base.metadata.create_all(bind=engine)
 
@@ -228,3 +233,55 @@ async def get_detections(
     ]
     
     return filtered_detections 
+
+# ---------------------------
+# AWS Location route calculator integration
+# ---------------------------
+
+class RouteRequest(BaseModel):
+    departure: List[float]      # [longitude, latitude]
+    destination: List[float]    # [longitude, latitude]
+
+def calculate_route_avoiding_markers(departure: list, destination: list, avoid_markers: list, buffer_distance: float = 0.001):
+    """
+    Calculates a route between departure and destination using AWS Location Service.
+    Avoids specified markers by placing offset waypoints near each marker.
+    """
+    # Prepare intermediate waypoints by offsetting the marker coordinates.
+    waypoints = []
+    for marker in avoid_markers:
+        # Offset longitude and latitude to steer around the marker.
+        waypoint = [marker[0] + buffer_distance, marker[1] + buffer_distance]
+        waypoints.append(waypoint)
+    
+    client = boto3.client("location", region_name="us-west-2")
+    try:
+        response = client.calculate_route(
+            CalculatorName="YourRouteCalculatorName",  # Replace with your route calculator name
+            DeparturePosition=departure,
+            DestinationPosition=destination,
+            WaypointPositions=waypoints,
+            DistanceUnit="Kilometers",
+            TravelMode="Car"
+        )
+    except Exception as e:
+        raise e
+    
+    return response
+
+@app.post("/calculate-route")
+async def calculate_route(req: RouteRequest, db: Session = Depends(get_db)):
+    try:
+        # Fetch all detection events from the database and prepare avoidance markers
+        detection_events = db.query(DetectionEvent).all()
+        # Convert each detection event into a marker [longitude, latitude]
+        avoid_markers = [[d.longitude, d.latitude] for d in detection_events]
+        
+        route_response = calculate_route_avoiding_markers(
+            departure=req.departure,
+            destination=req.destination,
+            avoid_markers=avoid_markers
+        )
+        return route_response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
