@@ -32,19 +32,19 @@ export default function NormalUserTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="normalUserPreferences"
+        options={{
+          title: 'Preferences',
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="normalUserPreferences"
-        options={{
-          title: 'Preferences',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
     </Tabs>

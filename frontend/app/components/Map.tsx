@@ -75,7 +75,8 @@ function MapScreen() {
       const helpRequestData = {
         userLocation: { latitude: 52.520008, longitude: 13.404954 },
         helpLocation: { latitude: 52.5203, longitude: 13.4051 },
-        description: 'Help needed to bypass stairs at this location',
+        description:
+          'Help needed to bypass stairs at this location, 5 km away from you',
       };
 
       setHelpRequest(helpRequestData); // Set hardcoded request
@@ -103,26 +104,26 @@ function MapScreen() {
   }, []);
 
   // Setup polling for detection events
-  useEffect(() => {
-    // Initial fetch
-    fetchDetectionEvents();
+  //   useEffect(() => {
+  //     // Initial fetch
+  //     fetchDetectionEvents();
 
-    // Start polling if not recording
-    if (!isRecording) {
-      pollingIntervalRef.current = setInterval(
-        fetchDetectionEvents,
-        POLLING_INTERVAL
-      );
-    }
+  //     // Start polling if not recording
+  //     if (!isRecording) {
+  //       pollingIntervalRef.current = setInterval(
+  //         fetchDetectionEvents,
+  //         POLLING_INTERVAL
+  //       );
+  //     }
 
-    // Cleanup function
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [isRecording, fetchDetectionEvents]);
+  //     // Cleanup function
+  //     return () => {
+  //       if (pollingIntervalRef.current) {
+  //         clearInterval(pollingIntervalRef.current);
+  //         pollingIntervalRef.current = null;
+  //       }
+  //     };
+  //   }, [isRecording, fetchDetectionEvents]);
 
   const handleRecordingPress = async () => {
     if (isRecording && recordingRef.current) {
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
   },
   helpRequestCard: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 100,
     left: 20,
     right: 20,
     backgroundColor: '#f0f0f0',
