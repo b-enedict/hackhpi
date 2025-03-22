@@ -7,6 +7,7 @@ import requests
 from statistics import mean
 import asyncio
 import math
+from inference import acceleration_data
 
 from models import DetectionEvent
 from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema, SensorDataPoint
@@ -99,18 +100,10 @@ async def process_with_ml_model(sensor_data: List[SensorDataPoint], db: Session)
     
     # Simulate ML model processing and getting a detection interval with label
     # In a real implementation, this would use your actual ML model
-    def run_ml_model(acceleration_data: List[Tuple[float, float, float, int]]) -> Dict:
-        # This is a placeholder for your actual ML model logic
-        # In reality, your model would analyze the acceleration data and return predictions
-        
-        # Simulating a detection - in your real implementation, this would be model output
-        # Returns a dict with detected event time interval and label
-        return {
-            "label": "stairs",  # The type of event detected
-            "intervall_start_time": acceleration_data[0][3],  # Start timestamp
-            "intervall_end_time": acceleration_data[0][3],   # End timestamp
 
-        }
+    acceleration_data(acceleration_data: List[Tuple[float, float, float, int]])
+    
+    '''
     
     # Extract acceleration data from sensor data
     acceleration_data = [(
