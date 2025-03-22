@@ -1,6 +1,6 @@
 from pydantic import BaseModel, RootModel   
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 
 class DetectionEventBase(BaseModel):
     detection_type: str
@@ -39,3 +39,16 @@ class SensorDataPoint(BaseModel):
 
 class SensorData(RootModel):
     root: List[SensorDataPoint] 
+
+# Route calculation schemas
+class RouteRequest(BaseModel):
+    departure_position: Tuple[float, float]
+    destination_position: Tuple[float, float]
+    avoid_areas: Optional[List[Dict[str, Any]]] = None
+
+class RouteResponse(BaseModel):
+    distance: float
+    duration: int
+    geometry: str
+    legs: List[Dict[str, Any]]
+    summary: Dict[str, Any] 
