@@ -14,6 +14,8 @@ class DetectionEventCreate(DetectionEventBase):
 class DetectionEvent(DetectionEventBase):
     id: int
     timestamp: datetime
+    total_count: int = 1
+    stairs_count: int = 0
 
     class Config:
         from_attributes = True
