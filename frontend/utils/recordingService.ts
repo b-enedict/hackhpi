@@ -28,12 +28,15 @@ const ACCELERATION_UPDATE_INTERVAL = 100; // 100ms (10 times per second)
 
 export const processSensorData = async (data: any) => {
   try {
-    const response = await fetch(`${API_URL}/detection`, {
+    // Filter out entries with null locations
+    const validData = data.filter((entry: any) => entry.location !== null);
+    
+    const response = await fetch(`${API_URL}/process-sensor-data/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(validData),
     });
 
     if (!response.ok) {
@@ -116,15 +119,26 @@ export const startRecording = async () => {
 };
 
 export const stopRecording = async (cleanup: () => void) => {
-  cleanup();
-  
-  // Get the final data
-  const recordedData = [...sensorData];
-  
-  // Clear the stored data
-  sensorData.length = 0;
-  
-  return recordedData;
+  try {
+    // Call cleanup first to stop all subscriptions
+    cleanup();
+    
+    // Get the final data
+    const recordedData = [...sensorData];
+    
+    // Send the data to the backend
+    await processSensorData(recordedData);
+    
+    // Clear the stored data
+    sensorData.length = 0;
+    
+    return recordedData;
+  } catch (error) {
+    console.error('Error stopping recording:', error);
+    // Still clear the data even if sending fails
+    sensorData.length = 0;
+    throw error;
+  }
 };
 
 export const exportRecordingData = (data: SensorData[]) => {

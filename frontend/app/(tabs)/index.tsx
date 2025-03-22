@@ -17,36 +17,22 @@ import { API_URL } from '../../config/env';
 interface DetectionEvent {
   id: number;
   detection_type: string;
+  label: string;
   latitude: number;
   longitude: number;
   timestamp: string;
 }
 
-interface StairsFeature {
-  geometry: {
-    coordinates: [number, number];
-    type: string;
-  };
-  properties: {
-    type: string;
-    description: string;
-  };
-}
-
-interface StairsData {
-  features: StairsFeature[];
-}
-
 interface MapComponentProps {
   location: Location.LocationObject;
-  stairsData: StairsData;
-  route: any; // Update this type based on your route data structure
+  detectionEvents: DetectionEvent[];
+  route: any;
 }
 
 const POLLING_INTERVAL = 2000; // 2 seconds
 
 // Web-compatible map component
-function MapComponent({ location, stairsData, route }: MapComponentProps) {
+function MapComponent({ location, detectionEvents, route }: MapComponentProps) {
   if (Platform.OS === 'web') {
     return (
       <iframe
@@ -82,16 +68,23 @@ function MapComponent({ location, stairsData, route }: MapComponentProps) {
       showsUserLocation={true}
       showsMyLocationButton={true}
     >
-      {stairsData.features.map((feature, index) => (
+      {detectionEvents.map((event) => (
         <Marker
-          key={index}
+          key={event.id}
           coordinate={{
-            latitude: feature.geometry.coordinates[1],
-            longitude: feature.geometry.coordinates[0],
+            latitude: event.latitude,
+            longitude: event.longitude,
           }}
-          title={feature.properties.type}
-          description={feature.properties.description}
-        />
+          title={event.detection_type}
+          description={`${event.detection_type} detected at ${new Date(event.timestamp).toLocaleString()}`}
+        >
+          <View style={styles.markerContainer}>
+            <Image
+              source={require('../../assets/images/stairsMarker.png')}
+              style={styles.markerImage}
+            />
+          </View>
+        </Marker>
       ))}
       {route && (
         <Polyline coordinates={route} strokeColor="#007AFF" strokeWidth={3} />
@@ -106,7 +99,7 @@ export default function MapScreen() {
   const [destination, setDestination] = useState<any | null>(null);
   const [route, setRoute] = useState<any[] | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [stairsData, setStairsData] = useState<StairsData>({ features: [] });
+  const [detectionEvents, setDetectionEvents] = useState<DetectionEvent[]>([]);
   const recordingRef = useRef<{ cleanup: () => void; getData: () => any[] } | null>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -116,14 +109,17 @@ export default function MapScreen() {
   // Function to fetch detection events
   const fetchDetectionEvents = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/detection`);
+      const response = await fetch(`${API_URL}/detections/`);
       if (!response.ok) {
         throw new Error('Failed to fetch detection events');
       }
-      const data = await response.json();
-      setStairsData({ features: data });
+      const events: DetectionEvent[] = await response.json();
+      
+      setDetectionEvents(events);
     } catch (error) {
       console.error('Error fetching detection events:', error);
+      // Keep existing events or set empty array
+      setDetectionEvents(prevEvents => prevEvents || []);
     }
   }, []);
 
@@ -178,38 +174,41 @@ export default function MapScreen() {
   }, [isRecording, fetchDetectionEvents]);
 
   const handleRecordingPress = async () => {
-    try {
-      if (!isRecording) {
-        // Stop polling when starting recording
+    if (isRecording && recordingRef.current) {
+      try {
+        // Update UI state immediately
+        setIsRecording(false);
+        
+        // Stop recording and send data in the background
+        await stopRecording(recordingRef.current.cleanup);
+        
+        // Restart polling after recording stops
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+        pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+        // Don't revert the UI state if there's an error
+      }
+    } else {
+      try {
+        // Update UI state immediately
+        setIsRecording(true);
+        
+        // Start recording in the background
+        const recording = await startRecording();
+        recordingRef.current = recording;
+        
+        // Stop polling while recording
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
-        
-        // Start recording
-        const recording = await startRecording();
-        recordingRef.current = recording;
-        setIsRecording(true);
-      } else {
-        // Stop recording
-        if (recordingRef.current) {
-          const recordedData = await stopRecording(recordingRef.current.cleanup);
-          recordingRef.current = null;
-          
-          // Fetch latest data and restart polling
-          await fetchDetectionEvents().catch(console.error); // Don't let fetch errors block the UI
-          pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
-        }
+      } catch (error) {
+        console.error('Error starting recording:', error);
+        // Revert UI state if there's an error
         setIsRecording(false);
-      }
-    } catch (error) {
-      console.error('Recording error:', error);
-      Alert.alert('Recording Error', 'Failed to start/stop recording');
-      setIsRecording(false);
-      
-      // Restart polling if recording fails
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(fetchDetectionEvents, POLLING_INTERVAL);
       }
     }
   };
@@ -253,7 +252,7 @@ export default function MapScreen() {
         <View style={styles.mapContainer}>
           <MapComponent
             location={location}
-            stairsData={stairsData}
+            detectionEvents={detectionEvents}
             route={route}
           />
         </View>
@@ -387,9 +386,11 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   markerImage: {
-    width: 40,
-    height: 40,
+    width: 27,
+    height: 27,
+    resizeMode: 'contain',
   },
 });
