@@ -12,12 +12,22 @@ import math
 from inference import acceleration_data
 
 from models import DetectionEvent
-from schemas import DetectionEventCreate, DetectionEvent as DetectionEventSchema, SensorDataPoint
+from schemas import (
+    DetectionEventCreate, 
+    DetectionEvent as DetectionEventSchema, 
+    SensorDataPoint,
+    RouteRequest,
+    RouteResponse
+)
+from route_service import RouteService
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Geospatial API")
+
+# Initialize route service
+route_service = RouteService()
 
 # Function to calculate Euclidean distance between two points (in meters)
 def calculate_distance(lat1, lon1, lat2, lon2):
@@ -263,3 +273,51 @@ async def get_detections(
     ]
     
     return filtered_detections 
+
+@app.post("/calculate-route", response_model=RouteResponse)
+async def calculate_route(request: RouteRequest):
+    """
+    Calculate a route between two points.
+    
+    Args:
+        request: RouteRequest containing departure and destination positions
+        
+    Returns:
+        RouteResponse containing route information
+    """
+    try:
+        route_info = route_service.calculate_route(
+            departure_position=request.departure_position,
+            destination_position=request.destination_position,
+            avoid_areas=request.avoid_areas
+        )
+        return route_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/alternative-route", response_model=RouteResponse)
+async def find_alternative_route(request: RouteRequest):
+    """
+    Find an alternative route that avoids specified areas.
+    
+    Args:
+        request: RouteRequest containing departure, destination positions, and areas to avoid
+        
+    Returns:
+        RouteResponse containing alternative route information
+    """
+    try:
+        if not request.avoid_areas:
+            raise HTTPException(
+                status_code=400,
+                detail="Avoid areas must be specified for alternative route calculation"
+            )
+            
+        route_info = route_service.find_alternative_route(
+            departure_position=request.departure_position,
+            destination_position=request.destination_position,
+            avoid_areas=request.avoid_areas
+        )
+        return route_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 

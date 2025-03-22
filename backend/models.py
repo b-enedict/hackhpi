@@ -11,4 +11,4 @@ class DetectionEvent(Base):
     label = Column(String, nullable=True)
     total_count = Column(Integer, default=1, nullable=False)
     stairs_count = Column(Integer, default=0, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False) 
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
