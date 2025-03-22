@@ -31,6 +31,27 @@ def print_database(db_path="geospatial.db"):
             rows = cursor.fetchall()
             
             if rows:
+                # Add ratio calculation for DetectionEvent
+                if 'detection_events' in table_name and 'total_count' in columns and 'stairs_count' in columns:
+                    for i, row in enumerate(rows):
+                        # Convert row to list for modification
+                        row_list = list(row)
+                        # Find indices for total_count and stairs_count
+                        total_idx = columns.index('total_count')
+                        stairs_idx = columns.index('stairs_count')
+                        
+                        # Calculate ratio if total_count > 0
+                        if row[total_idx] > 0:
+                            ratio = row[stairs_idx] / row[total_idx]
+                        else:
+                            ratio = 0
+                            
+                        # Add ratio to row and columns for first row only
+                        if i == 0:
+                            columns.append('stairs_ratio')
+                        row_list.append(f"{ratio:.2f}")
+                        rows[i] = tuple(row_list)
+                
                 print(tabulate(rows, headers=columns, tablefmt="grid"))
             else:
                 print("No records found.")
