@@ -104,26 +104,26 @@ function MapScreen() {
   }, []);
 
   // Setup polling for detection events
-  //   useEffect(() => {
-  //     // Initial fetch
-  //     fetchDetectionEvents();
+  useEffect(() => {
+    // Initial fetch
+    fetchDetectionEvents();
 
-  //     // Start polling if not recording
-  //     if (!isRecording) {
-  //       pollingIntervalRef.current = setInterval(
-  //         fetchDetectionEvents,
-  //         POLLING_INTERVAL
-  //       );
-  //     }
+    // Start polling if not recording
+    if (!isRecording) {
+      pollingIntervalRef.current = setInterval(
+        fetchDetectionEvents,
+        POLLING_INTERVAL
+      );
+    }
 
-  //     // Cleanup function
-  //     return () => {
-  //       if (pollingIntervalRef.current) {
-  //         clearInterval(pollingIntervalRef.current);
-  //         pollingIntervalRef.current = null;
-  //       }
-  //     };
-  //   }, [isRecording, fetchDetectionEvents]);
+    // Cleanup function
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [isRecording, fetchDetectionEvents]);
 
   const handleRecordingPress = async () => {
     if (isRecording && recordingRef.current) {
