@@ -5,4 +5,9 @@ pydantic
 pydantic-settings
 python-dotenv
 tabulate
-requests 
+requests
+pandas
+numpy
+matplotlib
+tensorflow
+scikit-learn 
