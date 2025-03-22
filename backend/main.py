@@ -103,23 +103,7 @@ async def process_with_ml_model(sensor_data: List[SensorDataPoint], db: Session)
 
     acceleration_data(acceleration_data: List[Tuple[float, float, float, int]])
     
-    '''
     
-    # Extract acceleration data from sensor data
-    acceleration_data = [(
-        point.linearAcceleration.x,
-        point.linearAcceleration.y, 
-        point.linearAcceleration.z,
-        point.timestamp
-    ) for point in sensor_data]
-    
-    # Process with ML model - in reality this would be your model prediction
-    detection_result = run_ml_model(acceleration_data)
-    
-    # Extract detection time interval
-    intervall_start_time = detection_result["intervall_start_time"]
-    intervall_end_time = detection_result["intervall_end_time"]
-    label = detection_result["label"]
     
     # Find GPS coordinates within the detection time interval
     locations_in_interval = [
