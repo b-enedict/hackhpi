@@ -1,9 +1,15 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
 import { router } from 'expo-router';
 
 export default function Page() {
   const handleGetStarted = () => {
-    router.replace('/(tabs)');
+    router.replace('/(disabledFlow)');
   };
 
   return (
@@ -34,10 +40,7 @@ export default function Page() {
           />
         </View>
 
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={handleGetStarted}
-        >
+        <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
           <Text style={styles.buttonText}>Get Started</Text>
         </TouchableOpacity>
       </View>
@@ -45,7 +48,15 @@ export default function Page() {
   );
 }
 
-function Feature({ emoji, title, description }: { emoji: string; title: string; description: string }) {
+function Feature({
+  emoji,
+  title,
+  description,
+}: {
+  emoji: string;
+  title: string;
+  description: string;
+}) {
   return (
     <View style={styles.feature}>
       <Text style={styles.featureEmoji}>{emoji}</Text>
@@ -124,4 +135,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-}); 
+});

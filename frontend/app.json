@@ -9,7 +9,18 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.boltexponativewind", // Add this line
+      "config": {
+        "googleMapsApiKey": "AIzaSyD1XlZ2CRJZREwguoMxhRUmD1PJPkdG9Xs"
+      }
+    },
+    "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD1XlZ2CRJZREwguoMxhRUmD1PJPkdG9Xs"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

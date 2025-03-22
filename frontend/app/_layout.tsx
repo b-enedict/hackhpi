@@ -1,19 +1,19 @@
+// frontend/app/_layout.tsx
 import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { router } from 'expo-router';
+import { UserProvider } from './UserContext';
 
 export default function Layout() {
-  useFrameworkReady();
-
   return (
-    <>
+    <UserProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboardingSelect" />
+        <Stack.Screen name="(disabledFlow)" />
+        <Stack.Screen name="(nonDisabledFlow)" />
       </Stack>
       <StatusBar style="auto" />
-    </>
+    </UserProvider>
   );
 }
