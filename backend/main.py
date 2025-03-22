@@ -7,6 +7,8 @@ import requests
 from statistics import mean
 import asyncio
 import math
+
+# Try to import from inference, but handle the case when it's not available
 from inference import acceleration_data
 
 from models import DetectionEvent
@@ -95,77 +97,89 @@ async def process_with_ml_model(sensor_data: List[SensorDataPoint], db: Session)
     Process sensor data with ML model and store predictions in the database.
     This runs asynchronously after the API has already responded.
     """
+
+    
     # TODO: Load your ML model (consider singleton pattern or global instance)
     # model = load_model()  # Your model loading code
     
     # Simulate ML model processing and getting a detection interval with label
     # In a real implementation, this would use your actual ML model
 
-    acceleration_data(acceleration_data: List[Tuple[float, float, float, int]])
+    x_values = [point.linearAcceleration.x for point in sensor_data]
+    y_values = [point.linearAcceleration.y for point in sensor_data]
+    z_values = [point.linearAcceleration.z for point in sensor_data]
     
+    # Get first timestamp from data
+    start_time = sensor_data[0].timestamp if sensor_data else 0
     
+    [labels, starts, ends] = acceleration_data(x_values, y_values, z_values, start_time)
     
-    # Find GPS coordinates within the detection time interval
-    locations_in_interval = [
-        point.location for point in sensor_data 
-        if intervall_start_time <= point.timestamp <= intervall_end_time
-    ]
+    for i in range(len(labels)):
+        label=labels[i]
+        intervall_start_time = starts[i]
+        intervall_end_time = ends[i]
     
-    if locations_in_interval:
-        # Calculate the middle GPS position
-        avg_latitude = mean([loc.latitude for loc in locations_in_interval])
-        avg_longitude = mean([loc.longitude for loc in locations_in_interval])
+        # Find GPS coordinates within the detection time interval
+        locations_in_interval = [
+            point.location for point in sensor_data 
+            if intervall_start_time <= point.timestamp <= intervall_end_time
+        ]
         
-        # Check if there's a nearby detection within 20 meters
-        existing_detections = db.query(DetectionEvent).all()
-        nearest_detection = None
-        min_distance = float('inf')
-        
-        for detection in existing_detections:
-            distance = calculate_distance(
-                detection.latitude, detection.longitude,
-                avg_latitude, avg_longitude
-            )
+        if locations_in_interval:
+            # Calculate the middle GPS position
+            avg_latitude = mean([loc.latitude for loc in locations_in_interval])
+            avg_longitude = mean([loc.longitude for loc in locations_in_interval])
             
-            if distance < 20 and distance < min_distance:  # Within 20 meters
-                min_distance = distance
-                nearest_detection = detection
-        
-        if nearest_detection:
-            # Update existing detection
-            nearest_detection.total_count += 1
+            # Check if there's a nearby detection within 20 meters
+            existing_detections = db.query(DetectionEvent).all()
+            nearest_detection = None
+            min_distance = float('inf')
             
-            if label == "stairs":
-                nearest_detection.stairs_count += 1
+            for detection in existing_detections:
+                distance = calculate_distance(
+                    detection.latitude, detection.longitude,
+                    avg_latitude, avg_longitude
+                )
+                
+                if distance < 20 and distance < min_distance:  # Within 20 meters
+                    min_distance = distance
+                    nearest_detection = detection
             
-            # Update the GPS location as a weighted average based on total_count
-            # This ensures the location is as close as possible to all detections
-            weight_old = (nearest_detection.total_count - 1) / nearest_detection.total_count
-            weight_new = 1 / nearest_detection.total_count
-            
-            nearest_detection.latitude = (nearest_detection.latitude * weight_old) + (avg_latitude * weight_new)
-            nearest_detection.longitude = (nearest_detection.longitude * weight_old) + (avg_longitude * weight_new)
-            
-            db.commit()
-            print(f"Updated detection ID {nearest_detection.id}: {label} at ({avg_latitude}, {avg_longitude})")
-            print(f"New counts - Total: {nearest_detection.total_count}, Stairs: {nearest_detection.stairs_count}")
-            
+            if nearest_detection:
+                # Update existing detection
+                nearest_detection.total_count += 1
+                
+                if label == "stairs":
+                    nearest_detection.stairs_count += 1
+                
+                # Update the GPS location as a weighted average based on total_count
+                # This ensures the location is as close as possible to all detections
+                weight_old = (nearest_detection.total_count - 1) / nearest_detection.total_count
+                weight_new = 1 / nearest_detection.total_count
+                
+                nearest_detection.latitude = (nearest_detection.latitude * weight_old) + (avg_latitude * weight_new)
+                nearest_detection.longitude = (nearest_detection.longitude * weight_old) + (avg_longitude * weight_new)
+                
+                db.commit()
+                print(f"Updated detection ID {nearest_detection.id}: {label} at ({avg_latitude}, {avg_longitude})")
+                print(f"New counts - Total: {nearest_detection.total_count}, Stairs: {nearest_detection.stairs_count}")
+                
+            else:
+                # Create a new detection
+                db_detection = DetectionEvent(
+                    detection_type=label,
+                    latitude=avg_latitude,
+                    longitude=avg_longitude,
+                    label=label,
+                    total_count=1,
+                    stairs_count=1 if label == "stairs" else 0
+                )
+                db.add(db_detection)
+                db.commit()
+                
+                print(f"New detection stored: {label} at ({avg_latitude}, {avg_longitude})")
         else:
-            # Create a new detection
-            db_detection = DetectionEvent(
-                detection_type=label,
-                latitude=avg_latitude,
-                longitude=avg_longitude,
-                label=label,
-                total_count=1,
-                stairs_count=1 if label == "stairs" else 0
-            )
-            db.add(db_detection)
-            db.commit()
-            
-            print(f"New detection stored: {label} at ({avg_latitude}, {avg_longitude})")
-    else:
-        print("No GPS coordinates found within the detection interval")
+            print("No GPS coordinates found within the detection interval")
 
 
 @app.post("/process-sensor-data/")

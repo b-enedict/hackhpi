@@ -58,8 +58,19 @@ def process_sensor_input(model, sensor_data, segment_length=20, overlap=0.0):
     features = np.column_stack((x_data, y_data, z_data))
     
     # Make sure the data matches the model's expected input shape
-    input_shape = model.layers[0].input_shape[0]
-    expected_time_points = input_shape[1] if len(input_shape) > 1 else segment_length
+    # Fix for newer TensorFlow versions where input_shape might not be directly accessible
+    try:
+        input_shape = model.layers[0].input_shape[0]
+        expected_time_points = input_shape[1] if len(input_shape) > 1 else segment_length
+    except (AttributeError, IndexError):
+        # Alternative approach to get input shape
+        try:
+            # Get shape from model's input
+            expected_time_points = model.inputs[0].shape[1] if model.inputs[0].shape[1] is not None else segment_length
+        except (AttributeError, IndexError):
+            # Fallback to using the segment length if we can't determine the shape
+            expected_time_points = segment_length
+            print("Warning: Could not determine model input shape, using segment_length instead.")
     
     if features.shape[0] > expected_time_points:
         features = features[:expected_time_points]
