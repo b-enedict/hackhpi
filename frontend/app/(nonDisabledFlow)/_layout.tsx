@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { MapPin, Settings, Navigation } from 'lucide-react-native';
+import { MapPin, Navigation, Settings, User } from 'lucide-react-native';
 
-export default function TabLayout() {
+export default function NormalUserTabLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -12,7 +12,8 @@ export default function TabLayout() {
           borderTopColor: '#E5E5EA',
           backgroundColor: '#FFFFFF',
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -25,14 +26,25 @@ export default function TabLayout() {
         name="routes"
         options={{
           title: 'Routes',
-          tabBarIcon: ({ color, size }) => <Navigation size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Navigation size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="normalUserPreferences"
+        options={{
+          title: 'Preferences',
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Settings size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
